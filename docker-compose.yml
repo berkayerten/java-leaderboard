@@ -1,0 +1,30 @@
+version: '3.8'
+services:
+  redis:
+    image: redis:7
+    container_name: leaderboard_redis
+    ports:
+      - "6397:6379"
+    networks:
+      - leaderboard-net
+
+  cassandra:
+    image: cassandra:4.1
+    container_name: leaderboard_cassandra
+    environment:
+      - CASSANDRA_START_RPC=true
+      - MAX_HEAP_SIZE=256M
+      - HEAP_NEWSIZE=256M
+    ports:
+      - "9042:9042"
+    networks:
+      - leaderboard-net
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe cluster"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+networks:
+  leaderboard-net:
+    driver: bridge

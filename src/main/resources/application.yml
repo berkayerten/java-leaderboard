@@ -1,1 +1,19 @@
-spring.application.name=leaderboard
+server:
+  port: 8733
+spring:
+  application:
+    name: leaderboard
+  data:
+    redis:
+      host: redis
+      port: 6397
+  cassandra:
+    contact-points: cassandra
+    port: 9042
+    keyspace-name: leaderboardks
+    schema-action: create_if_not_exists
+    local-datacenter: datacenter1
+leaderboard: # leaderboard Redis Pub/Sub Configuration
+  redis:
+    channel: leaderboard_updates
+    sorted-set-key: leaderboard:zset

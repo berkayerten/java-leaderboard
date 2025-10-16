@@ -1,0 +1,77 @@
+<!doctype html>
+
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Realtime Leaderboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; gap: 2em; margin: 2em; }
+        #leaderboard, #events { list-style: none; padding: 0; width: 250px; }
+        #leaderboard li { padding: 6px 8px; border-bottom: 1px solid #ddd; }
+        #events li { font-size: 0.9em; color: #555; }
+        h2 { margin-bottom: 0.3em; }
+        h3 { margin-top: 1em; }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h2> Leaderboard </h2>
+      <ul id="leaderboard"></ul>
+    </div>
+    <div>
+      <h3> Incoming Updates </h3>
+      <ul id="events"></ul>
+    </div>
+
+    <script>
+      const scores = {};
+      const limit = 10;
+
+      function renderLeaderboard() {
+        const list = document.getElementById('leaderboard');
+        list.innerHTML = "";
+
+        const top = Object.entries(scores)
+            .sort((a, b) =>  b[1] - a[1])
+            .slice(0, limit);
+
+        for (const [user, score] of top) {
+          const li = document.createElement('li');
+          li.innerText = `${user}: ${score}`;
+          list.appendChild(li);
+        }
+      }
+
+      function addIncomingUpdates(body) {
+        const li = document.createElement('li');
+        li.innerText = `${body.userId} scored ${body.score} at ${new Date(body.ts).toLocaleTimeString()}`;
+        document.getElementById('events').prepend(li);
+      }
+
+      async function loadInitialLeaderboard() {
+        const res = await fetch("http://localhost:8733/api/v1/top/" + limit);
+        const data = await res.json();
+        data.forEach(entry => scores[entry.userId] = entry.score);
+        renderLeaderboard();
+      }
+
+      // WebSocket Setup
+      const socket = new SockJS('http://localhost:8733/ws');
+      const stompClient = Stomp.over(socket);
+
+      stompClient.connect({}, function (frame) {
+        console.log('Connected!');
+        stompClient.subscribe("/topic/leaderboard", function (message) {
+          const body = JSON.parse(message.body);
+          scores[body.userId] = body.score;
+          addIncomingUpdates(body);
+          renderLeaderboard();
+        });
+      });
+
+      loadInitialLeaderboard();
+    </script>
+  </body>
+</html>
